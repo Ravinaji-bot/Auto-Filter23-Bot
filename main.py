@@ -1,99 +1,68 @@
+import os
 import asyncio
-from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from thefuzz import process, fuzz
+from pyrogram import Client, filters, idle
+from thefuzz import process
 
-# --- APNI DETAILS YAHAN BHAREIN ---
-API_ID = 24358501
-API_HASH = "fa51ce8876c215d8a76c98c755e6d2d3"
-BOT_TOKEN = "aapka_bot_token"
-OWNER_ID = 1834715690 # <--- Yahan apni Telegram User ID daalein (BotFather ya @userinfobot se mil jayegi)
+# --- Configuration (Leapcell Settings se lega) ---
+API_ID = int(os.environ.get("API_ID", "0")) 
+API_HASH = os.environ.get("API_HASH", "")
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
-SOURCE_CHANNEL_ID = -1002006644667 
-TARGET_GROUP_ID = -1002868324280
-DELETE_TIME = 300 
-# --------------------------------
+# Bot Client Setup
+app = Client(
+    "auto_filter_bot",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    bot_token=BOT_TOKEN
+)
 
-app = Client("AdvancedMovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+# --- Sample Movie Data (Yahan apni list badal sakte hain) ---
+MOVIES = {
+    "Pushpa 2": "https://t.me/your_channel/1",
+    "Van Helsing": "https://t.me/your_channel/2",
+    "Pirates of the Caribbean": "https://t.me/your_channel/3",
+    "Maharaja": "https://t.me/your_channel/4"
+}
 
-movie_db = {} 
+# --- Handlers ---
 
-async def update_movie_list():
-    global movie_db
-    async for msg in app.get_chat_history(SOURCE_CHANNEL_ID, limit=500):
-        if msg.caption:
-            title = msg.caption.split('\n')[0].strip()
-            movie_db[title] = msg.id
-
-# --- STATS COMMAND (SIRF OWNER KE LIYE) ---
-@app.on_message(filters.command("stats") & filters.user(OWNER_ID))
-async def get_stats(client, message):
-    # Bot kitne groups/chats mein hai uski counting
-    count = 0
-    async for dialog in client.get_dialogs():
-        count += 1
-    
-    # Isme hum approximate members bhi dikha sakte hain agar bot admin hai
-    status_text = (
-        "📊 **Bot Statistics**\n\n"
-        f"👥 **Total Chats/Groups:** `{count}`\n"
-        f"🎥 **Movies in DB:** `{len(movie_db)}`\n"
-        "👤 **Access:** `Owner Only`"
+@app.on_message(filters.command("start") & filters.private)
+async def start_handler(client, message):
+    await message.reply_text(
+        "**Namaste! 🙏**\n\n"
+        "Main ek Auto-Filter Bot hoon. Bas movie ka naam likhiye, "
+        "main link dhund kar de dunga!"
     )
-    await message.reply_text(status_text)
 
-# --- SEARCH LOGIC ---
-@app.on_message(filters.chat(TARGET_GROUP_ID) & filters.text & ~filters.command(["stats"]))
-async def search_and_send(client, message):
-    query = message.text.lower()
-    found_msg = None
-
-    # 1. Direct Search
-    async for m in client.search_messages(chat_id=SOURCE_CHANNEL_ID, query=query, limit=1):
-        found_msg = m
-
-    # 2. AI Fuzzy Matching (Agar spelling galat hai)
-    if not found_msg and movie_db:
-        titles = list(movie_db.keys())
-        best_match, score = process.extractOne(query, titles, scorer=fuzz.token_set_ratio)
-        
-        if score > 75: 
-            post_id = movie_db[best_match]
-            found_msg = await client.get_messages(SOURCE_CHANNEL_ID, post_id)
-
-    # 3. Post bhejna aur Auto-Delete
-    if found_msg and found_msg.media:
-        buttons = []
-        if found_msg.reply_markup and found_msg.reply_markup.inline_keyboard:
-            for row in found_msg.reply_markup.inline_keyboard:
-                btn_row = [InlineKeyboardButton(b.text, url=b.url) for b in row if b.url]
-                if btn_row: buttons.append(btn_row)
-
-        sent_msg = await found_msg.copy(
-            chat_id=TARGET_GROUP_ID,
-            reply_markup=InlineKeyboardMarkup(buttons) if buttons else None
+@app.on_message(filters.text & filters.private)
+async def search_handler(client, message):
+    query = message.text
+    choices = list(MOVIES.keys())
+    
+    # Fuzzy matching logic (naam thoda galat hone par bhi dhund lega)
+    result, score = process.extractOne(query, choices)
+    
+    if score > 60: 
+        link = MOVIES[result]
+        await message.reply_text(
+            f"🔍 **Result Found:** `{result}`\n"
+            f"✅ **Match Score:** {score}%\n\n"
+            f"🔗 [Yahan se Download karein]({link})",
+            disable_web_page_preview=True
         )
-
-        info = await message.reply_text(f"✅ **Result found!**\n🗑️ Auto-delete in 5 mins.")
-        
-        await asyncio.sleep(DELETE_TIME)
-        try:
-            await sent_msg.delete()
-            await info.delete()
-            await message.delete()
-        except: pass
     else:
-        err = await message.reply_text(f"❌ '{query}' nahi mila.")
-        await asyncio.sleep(10)
-        try:
-            await err.delete()
-            await message.delete()
-        except: pass
+        await message.reply_text("❌ Sorry! Ye movie hamare database mein nahi hai.")
 
-@app.on_connect()
-async def on_start(client, _):
-    await update_movie_list()
-    print("✅ Movie Database Updated & Bot is Ready!")
+# --- Boot Logic ---
 
-app.run()
-  
+async def main():
+    print("🚀 Bot starting...")
+    await app.start()
+    print("✅ Bot is Online!")
+    await idle()
+    await app.stop()
+
+if __name__ == "__main__":
+    # Asyncio loop run karne ke liye
+    asyncio.get_event_loop().run_until_complete(main())
+    
