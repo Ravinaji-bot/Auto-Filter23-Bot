@@ -10,7 +10,7 @@ BOT_TOKEN = "aapka_bot_token"
 OWNER_ID = 1834715690 # <--- Yahan apni Telegram User ID daalein (BotFather ya @userinfobot se mil jayegi)
 
 SOURCE_CHANNEL_ID = -1002006644667 
-TARGET_GROUP_ID = -1002142709211
+TARGET_GROUP_ID = -1002868324280
 DELETE_TIME = 300 
 # --------------------------------
 
