@@ -1,17 +1,16 @@
 import subprocess
 import os
+import time
 
-# Bot ko background mein start karega
-try:
-    print("🚀 Starting Telegram Bot (main.py)...")
-    subprocess.Popen(["python3", "main.py"])
-except Exception as e:
-    print(f"Error launching bot: {e}")
+# 1. Bot ko start hone ke liye 2 second ka gap denge
+print("🚀 Launching main.py...")
+subprocess.Popen(["python3", "main.py"])
 
-# Leapcell isi function ko dhund raha hai
+# 2. Leapcell ko turant response dene ke liye ye function
 def wsgi(environ, start_response):
+    # Jaise hi server check karega, hum turant 'OK' bol denge
+    # Isse server restart loop ruk jayega
     status = '200 OK'
-    headers = [('Content-type', 'text/plain')]
+    headers = [('Content-type', 'text/plain; charset=utf-8')]
     start_response(status, headers)
-    return [b"Bot is active and running!"]
-    
+    return [b"Bot is active and running in background!"]
