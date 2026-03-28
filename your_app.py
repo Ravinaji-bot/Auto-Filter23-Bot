@@ -1,27 +1,36 @@
 import os
-import subprocess
-import time
+import asyncio
+import sys
+from pyrogram import Client, idle
 
-# 1. Aapka Telegram Bot (main.py) start karne ka logic
-# Isse bot background mein chalu ho jayega
-try:
-    print("🚀 Starting Telegram Bot (main.py)...")
-    subprocess.Popen(["python", "main.py"])
-except Exception as e:
-    print(f"❌ Error starting bot: {e}")
+# --- Configuration ---
+API_ID = int(os.environ.get("API_ID", "0"))
+API_HASH = os.environ.get("API_HASH", "")
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
-# 2. Leapcell (Gunicorn) ko khush rakhne ke liye WSGI function
-# Ye function error 127 aur exit status 3 ko khatam kar dega
-def wsgi(environ, start_response):
-    # Leapcell jab check karega, toh use ye status milega
-    status = '200 OK'
-    headers = [('Content-type', 'text/plain; charset=utf-8')]
-    start_response(status, headers)
-    
-    # Message jo dashboard par dikhega (optional)
-    return [b"Bot is Running Successfully in Background!"]
+app = Client(
+    "auto_filter_bot",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    bot_token=BOT_TOKEN
+)
 
-# Agar aap local test kar rahe hain (optional)
+async def start_bot():
+    try:
+        print("🛰 Attempting to connect to Telegram...")
+        await app.start()
+        print("✅ BOT IS ONLINE NOW!")
+        await idle()
+    except Exception as e:
+        print(f"❌ CRITICAL ERROR: {e}")
+        # Isse server turant restart nahi hoga, hum error padh payenge
+        await asyncio.sleep(30) 
+    finally:
+        if app.is_connected:
+            await app.stop()
+
 if __name__ == "__main__":
-    print("System check: OK")
-    
+    try:
+        asyncio.run(start_bot())
+    except KeyboardInterrupt:
+        pass
