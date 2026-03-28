@@ -1,37 +1,21 @@
 import os
 import asyncio
-import sys
 from pyrogram import Client, idle
 
-# --- Configuration ---
-API_ID = int(os.environ.get("API_ID", "0"))
-API_HASH = os.environ.get("API_HASH", "")
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
-
+# Bot Client - in_memory=True lagana zaroori hai read-only system ke liye
 app = Client(
-    "auto_filter_bot",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    bot_token=BOT_TOKEN
+    "my_bot",
+    api_id=int(os.environ.get("API_ID")),
+    api_hash=os.environ.get("API_HASH"),
+    bot_token=os.environ.get("BOT_TOKEN"),
+    in_memory=True  # Ye line Read-only error ko fix karegi
 )
 
-async def start_bot():
-    try:
-        print("🛰 Attempting to connect to Telegram...")
-        await app.start()
-        print("✅ BOT IS ONLINE NOW!")
-        await idle()
-    except Exception as e:
-        print(f"❌ CRITICAL ERROR: {e}")
-        # Isse server turant restart nahi hoga, hum error padh payenge
-        await asyncio.sleep(30) 
-    finally:
-        if app.is_connected:
-            await app.stop()
+async def start():
+    await app.start()
+    print("✅ Bot is Online!")
+    await idle()
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(start_bot())
-    except KeyboardInterrupt:
-        pass
+    asyncio.run(start())
     
