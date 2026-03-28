@@ -4,13 +4,13 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from thefuzz import process, fuzz
 
 # --- APNI DETAILS YAHAN BHAREIN ---
-API_ID = 1234567 
-API_HASH = "aapka_api_hash"
+API_ID = 24358501
+API_HASH = "fa51ce8876c215d8a76c98c755e6d2d3"
 BOT_TOKEN = "aapka_bot_token"
-OWNER_ID = 123456789  # <--- Yahan apni Telegram User ID daalein (BotFather ya @userinfobot se mil jayegi)
+OWNER_ID = 1834715690 # <--- Yahan apni Telegram User ID daalein (BotFather ya @userinfobot se mil jayegi)
 
-SOURCE_CHANNEL_ID = -100123456789 
-TARGET_GROUP_ID = -100987654321
+SOURCE_CHANNEL_ID = -1002006644667 
+TARGET_GROUP_ID = -1002142709211
 DELETE_TIME = 300 
 # --------------------------------
 
