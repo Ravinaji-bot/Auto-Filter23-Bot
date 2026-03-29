@@ -4,12 +4,12 @@ import threading
 from pyrogram import Client, filters, idle
 from thefuzz import process
 
-# --- 1. Bot Configuration ---
+# --- Bot Configuration ---
 API_ID = int(os.environ.get("API_ID", "0"))
 API_HASH = os.environ.get("API_HASH", "")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
-# in_memory=True aur workdir="/tmp" taaki Read-only error na aaye
+# 'in_memory=True' aur 'workdir="/tmp"' Read-only system ke liye RAM use karte hain
 app = Client(
     "my_filter_bot",
     api_id=API_ID,
@@ -19,17 +19,17 @@ app = Client(
     workdir="/tmp"
 )
 
-# --- 2. Movie Database ---
+# --- Movie Database ---
 MOVIES = {
     "Pushpa 2": "https://t.me/example/1",
     "Maharaja": "https://t.me/example/4",
     "Stree 2": "https://t.me/example/5"
 }
 
-# --- 3. Handlers ---
+# --- Handlers ---
 @app.on_message(filters.command("start") & filters.private)
 async def start_handler(client, message):
-    await message.reply_text("**Bot Online Hai Sir! 🙏**\nMovie ka naam bhejiye.")
+    await message.reply_text("**Namaste! Bot Live Hai Sir! 🙏**")
 
 @app.on_message(filters.text & filters.private)
 async def search_handler(client, message):
@@ -37,23 +37,27 @@ async def search_handler(client, message):
     choices = list(MOVIES.keys())
     result, score = process.extractOne(query, choices)
     if score > 60:
-        await message.reply_text(f"🔍 **Mili:** {result}\n🔗 [Download]({MOVIES[result]})")
+        await message.reply_text(f"🔍 **Result:** {result}\n🔗 [Download]({MOVIES[result]})")
     else:
         await message.reply_text("❌ Nahi mili sir.")
 
-# --- 4. Bot Runner Function ---
+# --- Bot Runner ---
 def run_pyrogram():
-    print("🚀 Starting Pyrogram Bot...")
+    print("🚀 Starting Pyrogram Bot in Background...")
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(app.start())
-    print("✅ Bot is Online!")
-    idle()
+    try:
+        loop.run_until_complete(app.start())
+        print("✅ SUCCESS: Bot is Online!")
+        idle()
+    except Exception as e:
+        print(f"❌ Pyrogram Error: {e}")
 
-# Bot ko alag thread mein start karna taaki Leapcell ko response milta rahe
-threading.Thread(target=run_pyrogram, daemon=True).start()
+# Threading start
+t = threading.Thread(target=run_pyrogram, daemon=True)
+t.start()
 
-# --- 5. Leapcell WSGI Handler ---
+# --- Leapcell WSGI Handler ---
 def wsgi(environ, start_response):
     status = '200 OK'
     headers = [('Content-type', 'text/plain; charset=utf-8')]
