@@ -1,74 +1,63 @@
 import os
-import asyncio
-import threading
+import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from pyrogram import Client, filters, idle
-from thefuzz import process
+import urllib.request
 
-# --- Bot Config ---
-API_ID = int(os.environ.get("API_ID", "0"))
-API_HASH = os.environ.get("API_HASH", "")
+# --- Config ---
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
-app = Client(
-    "filter_bot",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    bot_token=BOT_TOKEN,
-    in_memory=True,
-    workdir="/tmp",
-    sleep_threshold=30 # Bot ko jaldi connect karne ke liye
-)
+# --- Movie Data ---
+MOVIES = {
+    "pushpa 2": "https://t.me/example/1",
+    "maharaja": "https://t.me/example/4"
+}
 
-# --- Sample Movie Data ---
-MOVIES = {"Pushpa 2": "https://t.me/example/1", "Stree 2": "https://t.me/example/2"}
+def send_message(chat_id, text):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    data = json.dumps({"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}).encode('utf-8')
+    req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+    try:
+        urllib.request.urlopen(req)
+    except Exception as e:
+        print(f"Error sending message: {e}")
 
-@app.on_message(filters.command("start") & filters.private)
-async def start(client, message):
-    await message.reply_text("✅ Bot Online Hai Sir! Main ready hoon.")
+class WebhookHandler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        # Telegram se aane wale messages handle karega
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+        update = json.loads(post_data.decode('utf-8'))
 
-@app.on_message(filters.text & filters.private)
-async def search(client, message):
-    query = message.text
-    choices = list(MOVIES.keys())
-    result, score = process.extractOne(query, choices)
-    if score > 60:
-        await message.reply_text(f"🔍 Result: {result}\n🔗 {MOVIES[result]}")
-    else:
-        await message.reply_text("❌ Movie nahi mili.")
+        if "message" in update and "text" in update["message"]:
+            chat_id = update["message"]["chat"]["id"]
+            text = update["message"]["text"].lower()
 
-# --- Universal Health Check Server ---
-class SimpleHandler(BaseHTTPRequestHandler):
+            if text == "/start":
+                send_message(chat_id, "✅ **Gajab Facts Bot Live Hai!**\nMovie search kijiye.")
+            else:
+                found = False
+                for movie, link in MOVIES.items():
+                    if movie in text:
+                        send_message(chat_id, f"🔍 **Mili:** {movie.title()}\n🔗 [Link]({link})")
+                        found = True
+                        break
+                if not found:
+                    send_message(chat_id, "❌ Sorry, movie nahi mili.")
+
+        self.send_response(200)
+        self.end_headers()
+
     def do_GET(self):
-        # Leapcell ke health check ko turant handle karega
+        # --- YE UPTIME ROBOT KE LIYE HAI ---
+        # Jab UptimeRobot link check karega, ye use 200 OK bhejega
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.end_headers()
-        self.wfile.write(b"Bot is Running!")
-    def log_message(self, format, *args):
-        return # Logs ko clean rakhne ke liye
-
-def run_server():
-    server = HTTPServer(('0.0.0.0', 8080), SimpleHandler)
-    server.serve_forever()
-
-# --- Run ---
-async def start_everything():
-    # Web server ko turant start karenge taaki Leapcell restart na kare
-    threading.Thread(target=run_server, daemon=True).start()
-    
-    print("🛰 Connecting to Telegram...")
-    try:
-        await app.start()
-        print("✅ SUCCESS: BOT IS ONLINE!")
-        await idle()
-    except Exception as e:
-        print(f"❌ Connection Error: {e}")
-    finally:
-        if app.is_connected:
-            await app.stop()
+        self.wfile.write(b"I am alive and working!")
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(start_everything())
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(('0.0.0.0', port), WebhookHandler)
+    print(f"🚀 Bot Server started on port {port}")
+    server.serve_forever()
     
