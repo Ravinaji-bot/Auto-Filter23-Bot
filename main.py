@@ -1,74 +1,75 @@
 import os
-import json
+import asyncio
+import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
-import urllib.request
+from pyrogram import Client, filters, idle
 
 # --- Configuration ---
+API_ID = int(os.environ.get("API_ID", "0"))
+API_HASH = os.environ.get("API_HASH", "")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
+# Apni Private Channel ka ID yahan daalein (Example: -100123456789)
+CHANNEL_ID = int(os.environ.get("CHANNEL_ID", "-100")) 
 
-# --- Movie Database ---
-MOVIES = {
-    "pushpa 2": "https://t.me/example/1",
-    "maharaja": "https://t.me/example/4",
-    "stree 2": "https://t.me/example/5"
-}
+app = Client(
+    "auto_filter_bot",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    bot_token=BOT_TOKEN,
+    in_memory=True,
+    workdir="/tmp"
+)
 
-def send_reply(chat_id, text):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "Markdown"
-    }
-    data = json.dumps(payload).encode('utf-8')
-    req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
-    try:
-        urllib.request.urlopen(req)
-    except Exception as e:
-        print(f"❌ Error sending: {e}")
+# Database to store movie info
+movie_db = {}
 
-class SimpleWebhookHandler(BaseHTTPRequestHandler):
-    def do_POST(self):
-        # Telegram Messages Handle karne ke liye
-        try:
-            length = int(self.headers.get('content-length', 0))
-            data = self.rfile.read(length)
-            update = json.loads(data.decode('utf-8'))
+# 1. Automatic Indexing: Channel ki purani aur nayi posts read karega
+async def index_movies():
+    print("📂 Indexing movies from channel...")
+    async for message in app.get_chat_history(CHANNEL_ID):
+        if message.document or message.video:
+            # File ka naam ya caption uthayega
+            file_name = message.caption or (message.document.file_name if message.document else "Unknown")
+            movie_db[file_name.lower()] = message.id
+    print(f"✅ Indexed {len(movie_db)} movies!")
 
-            if "message" in update and "text" in update["message"]:
-                chat_id = update["message"]["chat"]["id"]
-                user_text = update["message"]["text"].lower()
+# 2. Search Handler: Group ya Private mein jab koi naam likhe
+@app.on_message(filters.text & ~filters.service)
+async def search_movie(client, message):
+    query = message.text.lower()
+    
+    # Matching logic
+    for name, msg_id in movie_db.items():
+        if query in name:
+            # Movie file ko channel se forward karega
+            await client.copy_message(
+                chat_id=message.chat.id,
+                from_chat_id=CHANNEL_ID,
+                message_id=msg_id,
+                caption=f"🎬 **Found:** {name}\n\nJoin: @GajabFactsGujarati"
+            )
+            return
+    
+    if message.chat.type == "private":
+        await message.reply_text("❌ Sorry, ye movie mere database mein nahi hai.")
 
-                if user_text == "/start":
-                    send_reply(chat_id, "🙏 **Namaste! Gajab Facts Bot Live Hai!**\nMovie ka naam likhiye.")
-                else:
-                    found = False
-                    for movie, link in MOVIES.items():
-                        if movie in user_text:
-                            send_reply(chat_id, f"🔍 **Mili:** {movie.title()}\n🔗 [Download Karo]({link})")
-                            found = True
-                            break
-                    if not found:
-                        send_reply(chat_id, "❌ Sorry sir, ye movie nahi mili.")
-        except Exception as e:
-            print(f"Post Error: {e}")
-            
-        self.send_response(200)
-        self.end_headers()
-
+# --- Fake Server for Leapcell ---
+class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        # Leapcell Health Check aur UptimeRobot ke liye
         self.send_response(200)
-        self.send_header('Content-type', 'text/plain')
         self.end_headers()
-        self.wfile.write(b"Bot is Active!")
+        self.wfile.write(b"Auto Filter is Running!")
 
-    def log_message(self, format, *args):
-        return # Logs ko faltu requests se bharne se rokne ke liye
+def run_server():
+    HTTPServer(('0.0.0.0', 8080), SimpleHandler).serve_forever()
+
+async def start_bot():
+    threading.Thread(target=run_server, daemon=True).start()
+    await app.start()
+    await index_movies() # Bot start hote hi channel read karega
+    print("🚀 AUTO-FILTER BOT IS LIVE!")
+    await idle()
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    server = HTTPServer(('0.0.0.0', port), SimpleWebhookHandler)
-    print(f"🚀 BOT SERVER STARTED ON PORT {port}")
-    server.serve_forever()
-                    
+    asyncio.run(start_bot())
+                
