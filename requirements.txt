@@ -1,4 +1,3 @@
 pyrogram
 thefuzz
 python-Levenshtein
-gunicorn
