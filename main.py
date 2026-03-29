@@ -1,21 +1,15 @@
 import os
 import asyncio
-import sys
 from pyrogram import Client, filters, idle
 from thefuzz import process
 
-# --- Configuration (Leapcell Settings se fetch karega) ---
-#
-try:
-    API_ID = int(os.environ.get("API_ID", "0"))
-    API_HASH = os.environ.get("API_HASH", "")
-    BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
-except ValueError:
-    print("❌ ERROR: API_ID must be a number! Check Leapcell Env Variables.")
-    sys.exit(1)
+# --- Configuration (Leapcell Env Variables se fetch karega) ---
+API_ID = int(os.environ.get("API_ID", "0"))
+API_HASH = os.environ.get("API_HASH", "")
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
 # Bot Client Setup
-# in_memory=True lagaya hai taaki read-only system par session file ka error na aaye
+# in_memory=True lagaya hai taaki session file ka 'Read-only' error na aaye
 app = Client(
     "auto_filter_bot",
     api_id=API_ID,
@@ -24,8 +18,7 @@ app = Client(
     in_memory=True 
 )
 
-# --- Sample Movie Data ---
-#
+# --- Movie Database ---
 MOVIES = {
     "Pushpa 2": "https://t.me/example/1",
     "Van Helsing": "https://t.me/example/2",
@@ -48,7 +41,7 @@ async def search_handler(client, message):
     query = message.text
     choices = list(MOVIES.keys())
     
-    # Fuzzy matching logic
+    # Fuzzy matching (Naam thoda galat hone par bhi search karega)
     result, score = process.extractOne(query, choices)
     
     if score > 60: 
@@ -62,21 +55,19 @@ async def search_handler(client, message):
     else:
         await message.reply_text("❌ Sorry! Ye movie hamare database mein nahi hai.")
 
-# --- Main Boot Logic ---
+# --- Boot Logic ---
 
 async def run_bot():
     try:
         print("🛰 Connecting to Telegram...")
         await app.start()
-        print("✅ SUCCESS: Bot is Online!")
+        print("✅ Bot is Online!")
         await idle()
     except Exception as e:
-        print(f"❌ CRITICAL ERROR: {e}")
+        print(f"❌ Error: {e}")
     finally:
         if app.is_connected:
             await app.stop()
 
 if __name__ == "__main__":
-    # Asyncio loop run karne ka sahi tarika
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(run_bot())
+    asyncio.run(run_bot())
