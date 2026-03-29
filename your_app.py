@@ -1,20 +1,24 @@
 import subprocess
 import os
-import time
+import sys
 
-# Bot ko background mein start karne ke liye 'nohup' use karenge
-print("🚀 Launching main.py in background...")
+# 1. Bot ko background mein start karne ka sahi tarika (Read-only safe)
 try:
-    # 'nohup' aur '&' se bot alag process mein chalega aur crash nahi hoga
-    os.system("nohup python3 main.py > bot_logs.txt 2>&1 &")
+    print("🚀 Launching main.py in background...")
+    # stdout aur stderr ko DEVNULL par set kiya hai taaki Read-only error na aaye
+    subprocess.Popen(
+        [sys.executable, "main.py"], 
+        stdout=subprocess.DEVNULL, 
+        stderr=subprocess.DEVNULL,
+        start_new_session=True
+    )
 except Exception as e:
-    print(f"Launch Error: {e}")
+    print(f"❌ Launch Error: {e}")
 
-# Leapcell ko turant response dene ke liye WSGI function
+# 2. Leapcell (Gunicorn) ko response dene ke liye WSGI function
 def wsgi(environ, start_response):
-    # Jaise hi server request bhejega, hum bina ruke answer denge
+    # Jaise hi server request bhejega, hum turant '200 OK' denge
     status = '200 OK'
     headers = [('Content-type', 'text/plain; charset=utf-8')]
     start_response(status, headers)
-    return [b"Bot is active and running!"]
-    
+    return [b"Bot is active and running!"] 
