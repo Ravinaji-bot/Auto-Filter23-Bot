@@ -1,3 +1,2 @@
 pyrogram
-thefuzz
-python-Levenshtein
+tgcrypto
