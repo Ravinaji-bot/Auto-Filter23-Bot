@@ -1,15 +1,16 @@
 import subprocess
 import os
 import sys
+import time
 
-# 1. Bot ko background mein start karne ka sahi tarika (Read-only safe)
+# 1. Bot ko background mein start karne ka sabse safe tarika
+print("🚀 Launching main.py in background...")
 try:
-    print("🚀 Launching main.py in background...")
-    # stdout aur stderr ko DEVNULL par set kiya hai taaki Read-only error na aaye
+    # stdout/stderr ko DEVNULL kiya taaki Read-only error na aaye
     subprocess.Popen(
-        [sys.executable, "main.py"], 
-        stdout=subprocess.DEVNULL, 
-        stderr=subprocess.DEVNULL,
+        [sys.executable, "main.py"],
+        stdout=None, 
+        stderr=None,
         start_new_session=True
     )
 except Exception as e:
@@ -21,4 +22,5 @@ def wsgi(environ, start_response):
     status = '200 OK'
     headers = [('Content-type', 'text/plain; charset=utf-8')]
     start_response(status, headers)
-    return [b"Bot is active and running!"] 
+    return [b"Bot is active and running!"]
+    
